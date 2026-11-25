@@ -2,9 +2,11 @@ import streamlit as st
 import numpy as np
 import pandas as pd
 import joblib
+from pathlib import Path
 
-# Load model
-model = joblib.load('RFmodel.pkl')
+# Resolve the model relative to this script, not the shell's working directory.
+MODEL_PATH = Path(__file__).resolve().parent / 'RFmodel.pkl'
+model = joblib.load(MODEL_PATH)
 
 # Streamlit page config
 st.set_page_config(page_title="Injury Risk Predictor", page_icon="🩹", layout="centered")
@@ -13,6 +15,7 @@ st.set_page_config(page_title="Injury Risk Predictor", page_icon="🩹", layout=
 st.title('🩹 Injury Risk Predictors')
 
 st.markdown("Fill in the player’s information below:")
+st.info("Academic demonstration only. This tool is not clinically validated and must not be used for medical decisions.")
 
 # Inputs for all features
 gender = st.selectbox('Gender', ('Male', 'Female'))
@@ -46,8 +49,9 @@ features = np.array([[gender, weight_kg, position, training_intensity,
 # Predict when user clicks button
 if st.button('Predict Injury Risk'):
     with st.spinner('Predicting Injury Risk...'):
-        probability = model.predict_proba(features)[0][1]
-        risk_percentage = probability * 100
+        model_probability = float(model.predict_proba(features)[0][1])
+        # This is a heuristic indicator, not a calibrated injury probability.
+        risk_percentage = model_probability * 100
 
         # Apply manual adjustments
         if fatigue_score >= 8:
@@ -62,6 +66,8 @@ if st.button('Predict Injury Risk'):
 
         # Show the result
         st.subheader("Prediction Result:")
+        st.metric("Random Forest model score", f"{model_probability * 100:.2f}%")
+        st.caption("The following adjusted indicator adds hand-crafted rules to the model score. It is not a calibrated probability.")
         
         if risk_percentage < 20:
             st.success(f"✅ Low Risk of Injury ({risk_percentage:.2f}%)")
